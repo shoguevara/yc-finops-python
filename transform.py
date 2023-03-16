@@ -1,6 +1,5 @@
 import pandas as pd
 import json
-from cherrypicker import CherryPicker
 
 with open('instaces.json', encoding='utf-8') as f:
    data = json.loads(f.read())
