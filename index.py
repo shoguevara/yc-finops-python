@@ -24,23 +24,24 @@ def getservicejson(serviceurl,folderid,iamtoken):
     return response
 
 def transform(inputcsv,inputjson):
-    jsonBody = pd.json_normalize(inputjson).rename(columns={'id': 'resource_id'})
+    headlessjson = inputjson['instances']
+    jsonBody = pd.json_normalize(headlessjson).rename(columns={'id': 'resource_id'})
     labels_columns = [col for col in jsonBody.columns if "labels." in col]
     labels_columns.append("resource_id")
     jsonBody_subset = jsonBody[labels_columns]
-    merged_data = inputcsv.merge(jsonBody_subset,on=["resource_id"],how="left")
-    print(merged_data.to_csv())
-    return(merged_data)
+    df1 = pd.DataFrame(inputcsv)
+    merged_data = df1.merge(jsonBody_subset,on=["resource_id"],how="left")
+    return merged_data.to_csv()
 
-#def saveresultingcsv(bucket_name,object_key,content):
-#    session = boto3.session.Session()
-#    s3 = session.client(
-#        service_name='s3',
-#        endpoint_url='https://storage.yandexcloud.net'
-#    )
-#    transformed_bucket = bucket_name+'_transformed'
-#    bucket = s3.create_bucket(Bucket=transformed_bucket)
-#    s3.put_object(Bucket=bucket, Key=k, Body=content)
+def saveresultingcsv(bucket_name,object_key,content):
+    session = boto3.session.Session()
+    s3 = session.client(
+        service_name='s3',
+        endpoint_url='https://storage.yandexcloud.net'
+    )
+    transformed_bucket = bucket_name+'_transformed'
+    bucket = s3.create_bucket(Bucket=transformed_bucket)
+    s3.put_object(Bucket=bucket, Key=k, Body=content)
 
 
 def handler(event, context):
@@ -50,8 +51,9 @@ def handler(event, context):
     folder = event['messages'][0]['event_metadata']['folder_id']
     iamtoken = context.token['access_token']
     inputjson = getservicejson(serviceurl,folder,iamtoken).json()
-    inputcsv = getbillingcsv(bucket_name,object_key).to_csv()
+    inputcsv = getbillingcsv(bucket_name,object_key)
     mdata = transform(inputcsv,inputjson)
+
     return {
         'statusCode': 200,
         'body': 'Success!',
