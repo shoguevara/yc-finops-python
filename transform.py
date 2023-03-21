@@ -23,19 +23,16 @@ def getservicejson(serviceurl,folderid,iamtoken):
     response = requests.get("%s%s" % (serviceurl,folderid), headers={'Authorization': 'Bearer %s'  % iamtoken})
     return response
 
-#def transform(inputcsv,inputjson):
-#   with open('instaces.json', encoding='utf-8') as f:
-#       data = json.loads(f.read())
-#   jsonBody = pd.json_normalize(data).rename(columns={'id': 'resource_id'})
-#   labels_columns = [col for col in jsonBody.columns if "labels." in col]
-#   labels_columns.append("resource_id")
-#   jsonBody_subset = jsonBody[labels_columns]
-#   df1 = pd.read_csv('20230213.csv')
-#   merged_data = df1.merge(jsonBody_subset,on=["resource_id"],how="left")
-#   merged_data.to_csv('merged.csv')   
-#   return merged_data
+def transform(inputcsv,inputjson):
+    jsonBody = pd.json_normalize(inputjson).rename(columns={'id': 'resource_id'})
+    labels_columns = [col for col in jsonBody.columns if "labels." in col]
+    labels_columns.append("resource_id")
+    jsonBody_subset = jsonBody[labels_columns]
+    merged_data = inputcsv.merge(jsonBody_subset,on=["resource_id"],how="left")
+    print(merged_data.to_csv())
+    return(merged_data)
 
-#def saveresultingcsv(bucket_name,object_key):
+#def saveresultingcsv(bucket_name,object_key,content):
 #    session = boto3.session.Session()
 #    s3 = session.client(
 #        service_name='s3',
@@ -43,6 +40,8 @@ def getservicejson(serviceurl,folderid,iamtoken):
 #    )
 #    transformed_bucket = bucket_name+'_transformed'
 #    bucket = s3.create_bucket(Bucket=transformed_bucket)
+#    s3.put_object(Bucket=bucket, Key=k, Body=content)
+
 
 def handler(event, context):
     bucket_name = event['messages'][0]['details']['bucket_id']
@@ -50,7 +49,9 @@ def handler(event, context):
     serviceurl = "https://compute.api.cloud.yandex.net/compute/v1/instances?folderId="
     folder = event['messages'][0]['event_metadata']['folder_id']
     iamtoken = context.token['access_token']
-    print(getservicejson(serviceurl,folder,iamtoken).json())
+    inputjson = getservicejson(serviceurl,folder,iamtoken).json()
+    inputcsv = getbillingcsv(bucket_name,object_key).to_csv()
+    mdata = transform(inputcsv,inputjson)
     return {
         'statusCode': 200,
         'body': 'Success!',
