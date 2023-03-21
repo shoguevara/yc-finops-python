@@ -41,7 +41,7 @@ def saveresultingcsv(bucket_name,object_key,content):
     )
     transformed_bucket = bucket_name+'_transformed'
     bucket = s3.create_bucket(Bucket=transformed_bucket)
-    s3.put_object(Bucket=bucket, Key=k, Body=content)
+    s3.put_object(Bucket=bucket, Key=object_key, Body=content)
 
 
 def handler(event, context):
@@ -53,7 +53,7 @@ def handler(event, context):
     inputjson = getservicejson(serviceurl,folder,iamtoken).json()
     inputcsv = getbillingcsv(bucket_name,object_key)
     mdata = transform(inputcsv,inputjson)
-
+    saveresultingcsv(bucket_name,object_key,mdata)
     return {
         'statusCode': 200,
         'body': 'Success!',
