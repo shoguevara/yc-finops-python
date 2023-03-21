@@ -31,17 +31,23 @@ def transform(inputcsv,inputjson):
     jsonBody_subset = jsonBody[labels_columns]
     df1 = pd.DataFrame(inputcsv)
     merged_data = df1.merge(jsonBody_subset,on=["resource_id"],how="left")
-    return merged_data.to_csv()
+    return merged_data
 
-def saveresultingcsv(bucket_name,object_key,content):
+def saveresultingcsv(bucket_name,object_key,df):
     session = boto3.session.Session()
     s3 = session.client(
         service_name='s3',
         endpoint_url='https://storage.yandexcloud.net'
     )
-    transformed_bucket = bucket_name+'_transformed'
-    bucket = s3.create_bucket(Bucket=transformed_bucket)
-    s3.put_object(Bucket=bucket, Key=object_key, Body=content)
+    transformed_bucket = bucket_name+'transformed'
+    if s3.head_bucket(Bucket=transformed_bucket):
+        print("The bucket exists")
+    else:
+        s3.create_bucket(Bucket=transformed_bucket)
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer)
+    s3_resource = boto3.resource('s3')
+    s3_resource.Object(transformed_bucket, object_key).put(Body=csv_buffer.getvalue())
 
 
 def handler(event, context):
